@@ -36,6 +36,6 @@
         "healthcheckPath": "/health",
         "healthcheckTimeout": 100
       }
-    }
+    } 
   ]
 } 
