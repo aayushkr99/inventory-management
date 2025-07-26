@@ -1,6 +1,6 @@
 # Inventory Management System (FIFO) - Real-Time Dashboard
 
-A comprehensive inventory management system built with FIFO (First-In-First-Out) costing methodology, featuring real-time data ingestion through Kafka and a live dashboard.
+A comprehensive inventory management system built with FIFO (First-In-First-Out) costing methodology, featuring real-time data ingestion through Kafka and a live dashboard. 
 
 ## 🚀 Live Demo
 
