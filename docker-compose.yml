@@ -70,18 +70,19 @@ services:
       timeout: 10s
       retries: 5
 
-  # Next.js Application
-  app:
+  # Frontend (Next.js Application)
+  frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: inventory-app
+    container_name: inventory-frontend
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/inventory_management
       - KAFKA_BROKER_URL=kafka:29092
       - NEXTAUTH_SECRET=5644c212a72a209d0bff18a20834c55461dca6c06266ab9273e1dc8e7b2c871a
       - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_BACKEND_URL=http://backend:3001
     ports:
       - "3000:3000"
     depends_on:
@@ -89,13 +90,31 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      backend:
+        condition: service_healthy
     networks:
       - inventory-network
-    command: npm run dev
+
+  # Backend (Express.js API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: inventory-backend
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/inventory_management
+      - KAFKA_BROKER_URL=kafka:29092
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - inventory-network
 
   # Kafka UI (Optional - for monitoring)
   kafka-ui:

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { api, isBackendAvailable, type Product, type Transaction, type InventoryBatch } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,31 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Package, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react"
 
-interface Product {
-  product_id: string
-  current_quantity: number
-  total_cost: number
-  average_cost: number
-}
 
-interface Transaction {
-  id: string
-  product_id: string
-  event_type: "purchase" | "sale"
-  quantity: number
-  unit_price?: number
-  total_cost?: number
-  timestamp: string
-}
-
-interface InventoryBatch {
-  id: string
-  product_id: string
-  quantity: number
-  unit_price: number
-  remaining_quantity: number
-  created_at: string
-}
 
 export default function InventoryDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -49,6 +26,7 @@ export default function InventoryDashboard() {
   const [batches, setBatches] = useState<InventoryBatch[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [simulatorRunning, setSimulatorRunning] = useState(false)
+  const [backendAvailable, setBackendAvailable] = useState(false)
 
   // Mock authentication
   const handleLogin = (e: React.FormEvent) => {
@@ -60,13 +38,38 @@ export default function InventoryDashboard() {
     }
   }
 
-  // Initialize mock data
+  // Initialize data from backend
   useEffect(() => {
     if (isAuthenticated) {
+      initializeData()
+    }
+  }, [isAuthenticated])
+
+  const initializeData = async () => {
+    try {
+      // Check if backend is available
+      const available = await isBackendAvailable()
+      setBackendAvailable(available)
+      
+      if (available) {
+        // Load data from backend
+        const inventoryState = await api.getInventoryState()
+        setProducts(inventoryState.products)
+        setTransactions(inventoryState.transactions)
+        setBatches(inventoryState.batches)
+        setIsConnected(true)
+      } else {
+        // Fallback to mock data if backend is not available
+        initializeMockData()
+        setIsConnected(true)
+      }
+    } catch (error) {
+      console.error('Error initializing data:', error)
+      // Fallback to mock data
       initializeMockData()
       setIsConnected(true)
     }
-  }, [isAuthenticated])
+  }
 
   const initializeMockData = () => {
     const mockProducts: Product[] = [
@@ -174,7 +177,7 @@ export default function InventoryDashboard() {
   }
 
   // Kafka Event Simulator
-  const simulateKafkaEvent = () => {
+  const simulateKafkaEvent = async () => {
     const productIds = ["PRD001", "PRD002", "PRD003"]
     const eventTypes = ["purchase", "sale"]
     const randomProductId = productIds[Math.floor(Math.random() * productIds.length)]
@@ -182,97 +185,122 @@ export default function InventoryDashboard() {
     const randomQuantity = Math.floor(Math.random() * 50) + 10
     const randomPrice = Math.floor(Math.random() * 100) + 50
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      product_id: randomProductId,
-      event_type: randomEventType,
-      quantity: randomQuantity,
-      unit_price: randomEventType === "purchase" ? randomPrice : undefined,
-      total_cost:
-        randomEventType === "purchase"
-          ? randomQuantity * randomPrice
-          : calculateFIFOCost(randomProductId, randomQuantity),
-      timestamp: new Date().toISOString(),
-    }
+    try {
+      if (backendAvailable) {
+        // Send event to backend
+        const result = await api.processInventoryEvent({
+          product_id: randomProductId,
+          event_type: randomEventType,
+          quantity: randomQuantity,
+          unit_price: randomEventType === "purchase" ? randomPrice : undefined,
+          timestamp: new Date().toISOString(),
+        })
 
-    // Update transactions
-    setTransactions((prev) => [newTransaction, ...prev])
+        if (result.success) {
+          // Refresh data from backend
+          const inventoryState = await api.getInventoryState()
+          setProducts(inventoryState.products)
+          setTransactions(inventoryState.transactions)
+          setBatches(inventoryState.batches)
+        }
+      } else {
+        // Fallback to local simulation
+        const newTransaction: Transaction = {
+          id: Date.now().toString(),
+          product_id: randomProductId,
+          event_type: randomEventType,
+          quantity: randomQuantity,
+          unit_price: randomEventType === "purchase" ? randomPrice : undefined,
+          total_cost:
+            randomEventType === "purchase"
+              ? randomQuantity * randomPrice
+              : calculateFIFOCost(randomProductId, randomQuantity),
+          timestamp: new Date().toISOString(),
+        }
 
-    // Update products and batches based on FIFO logic
-    if (randomEventType === "purchase") {
-      // Add new batch
-      const newBatch: InventoryBatch = {
-        id: `B${Date.now()}`,
-        product_id: randomProductId,
-        quantity: randomQuantity,
-        unit_price: randomPrice,
-        remaining_quantity: randomQuantity,
-        created_at: new Date().toISOString(),
-      }
-      setBatches((prev) => [...prev, newBatch])
+        // Update transactions
+        setTransactions((prev) => [newTransaction, ...prev])
 
-      // Update product quantity and cost
-      setProducts((prev) =>
-        prev.map((p) => {
-          if (p.product_id === randomProductId) {
-            const newQuantity = p.current_quantity + randomQuantity
-            const newTotalCost = p.total_cost + randomQuantity * randomPrice
-            return {
-              ...p,
-              current_quantity: newQuantity,
-              total_cost: newTotalCost,
-              average_cost: newTotalCost / newQuantity,
-            }
+        // Update products and batches based on FIFO logic
+        if (randomEventType === "purchase") {
+          // Add new batch
+          const newBatch: InventoryBatch = {
+            id: `B${Date.now()}`,
+            product_id: randomProductId,
+            quantity: randomQuantity,
+            unit_price: randomPrice,
+            remaining_quantity: randomQuantity,
+            created_at: new Date().toISOString(),
           }
-          return p
-        }),
-      )
-    } else {
-      // Handle sale with FIFO
-      const product = products.find((p) => p.product_id === randomProductId)
-      if (product && product.current_quantity >= randomQuantity) {
-        // Update batches (consume oldest first)
-        let remainingToSell = randomQuantity
-        setBatches((prev) =>
-          prev.map((batch) => {
-            if (batch.product_id === randomProductId && remainingToSell > 0 && batch.remaining_quantity > 0) {
-              const consumed = Math.min(remainingToSell, batch.remaining_quantity)
-              remainingToSell -= consumed
-              return {
-                ...batch,
-                remaining_quantity: batch.remaining_quantity - consumed,
-              }
-            }
-            return batch
-          }),
-        )
+          setBatches((prev) => [...prev, newBatch])
 
-        // Update product
-        setProducts((prev) =>
-          prev.map((p) => {
-            if (p.product_id === randomProductId) {
-              const newQuantity = p.current_quantity - randomQuantity
-              const costOfSale = calculateFIFOCost(randomProductId, randomQuantity)
-              const newTotalCost = p.total_cost - costOfSale
-              return {
-                ...p,
-                current_quantity: newQuantity,
-                total_cost: newTotalCost,
-                average_cost: newQuantity > 0 ? newTotalCost / newQuantity : 0,
+          // Update product quantity and cost
+          setProducts((prev) =>
+            prev.map((p) => {
+              if (p.product_id === randomProductId) {
+                const newQuantity = p.current_quantity + randomQuantity
+                const newTotalCost = p.total_cost + randomQuantity * randomPrice
+                return {
+                  ...p,
+                  current_quantity: newQuantity,
+                  total_cost: newTotalCost,
+                  average_cost: newTotalCost / newQuantity,
+                }
               }
-            }
-            return p
-          }),
-        )
+              return p
+            }),
+          )
+        } else {
+          // Handle sale with FIFO
+          const product = products.find((p) => p.product_id === randomProductId)
+          if (product && product.current_quantity >= randomQuantity) {
+            // Update batches (consume oldest first)
+            let remainingToSell = randomQuantity
+            setBatches((prev) =>
+              prev.map((batch) => {
+                if (batch.product_id === randomProductId && remainingToSell > 0 && batch.remaining_quantity > 0) {
+                  const consumed = Math.min(remainingToSell, batch.remaining_quantity)
+                  remainingToSell -= consumed
+                  return {
+                    ...batch,
+                    remaining_quantity: batch.remaining_quantity - consumed,
+                  }
+                }
+                return batch
+              }),
+            )
+
+            // Update product
+            setProducts((prev) =>
+              prev.map((p) => {
+                if (p.product_id === randomProductId) {
+                  const newQuantity = p.current_quantity - randomQuantity
+                  const costOfSale = calculateFIFOCost(randomProductId, randomQuantity)
+                  const newTotalCost = p.total_cost - costOfSale
+                  return {
+                    ...p,
+                    current_quantity: newQuantity,
+                    total_cost: newTotalCost,
+                    average_cost: newQuantity > 0 ? newTotalCost / newQuantity : 0,
+                  }
+                }
+                return p
+              }),
+            )
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error simulating event:', error)
+      alert('Failed to process event. Please try again.')
     }
   }
 
   // Auto simulator
-  const startSimulator = () => {
+  const startSimulator = async () => {
     setSimulatorRunning(true)
-    const interval = setInterval(() => {
-      simulateKafkaEvent()
+    const interval = setInterval(async () => {
+      await simulateKafkaEvent()
     }, 2000)
 
     setTimeout(() => {
@@ -342,7 +370,9 @@ export default function InventoryDashboard() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></div>
-              <span className="text-sm text-gray-600">{isConnected ? "Connected" : "Disconnected"}</span>
+              <span className="text-sm text-gray-600">
+                {isConnected ? (backendAvailable ? "Connected to Backend" : "Connected (Mock Data)") : "Disconnected"}
+              </span>
             </div>
             <Button onClick={() => setIsAuthenticated(false)} variant="outline">
               Logout

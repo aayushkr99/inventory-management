@@ -17,7 +17,9 @@
     "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
     "docker:down": "docker-compose -f docker-compose.dev.yml down",
     "docker:logs": "docker-compose -f docker-compose.dev.yml logs -f",
-    "docker:restart": "docker-compose -f docker-compose.dev.yml restart"
+    "docker:restart": "docker-compose -f docker-compose.dev.yml restart",
+    "start:local": "bash start-local.sh",
+    "deploy:railway": "bash deploy-railway.sh"
   },
   "dependencies": {
     "next": "14.0.0",
