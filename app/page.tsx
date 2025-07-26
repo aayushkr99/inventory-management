@@ -50,6 +50,8 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isSimulatorRunning, setIsSimulatorRunning] = useState(false);
   const [isSyncRunning, setIsSyncRunning] = useState(false);
@@ -160,11 +162,22 @@ export default function Home() {
     ]);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+    
+    // Simulate a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     if (username === 'admin' && password === 'inventory123') {
       setIsAuthenticated(true);
+      setLoginError('');
+    } else {
+      setLoginError('Invalid username or password. Please try again.');
     }
+    
+    setIsLoggingIn(false);
   };
 
   const generateRandomEvent = (eventType: 'purchase' | 'sale') => {
@@ -497,7 +510,7 @@ export default function Home() {
       <div className="login-container">
         <form className="form" onSubmit={handleLogin}>
           <h2 className="form-title">Inventory Management</h2>
-          <p className="form-subtitle">Sign in to access your dashboard</p>
+          <p className="form-subtitle">Login to access your dashboard</p>
           
           <div className="form-group">
             <label className="form-label">Username</label>
@@ -523,8 +536,21 @@ export default function Home() {
             />
           </div>
           
-          <button type="submit" className="btn btn-primary">
-            Sign In
+          {loginError && (
+            <div className="form-error">
+              {loginError}
+            </div>
+          )}
+
+          <button type="submit" className="btn btn-primary" disabled={isLoggingIn}>
+            {isLoggingIn ? (
+              <>
+                <div className="loading-spinner"></div>
+                Logging In...
+              </>
+            ) : (
+              'Login'
+            )}
           </button>
           
           <div className="demo-credentials">
