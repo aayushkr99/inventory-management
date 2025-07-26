@@ -1,621 +1,683 @@
-"use client"
+'use client';
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
-import { Package, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react"
+import { useState, useEffect } from 'react';
+import { 
+  Package, 
+  TrendingUp, 
+  DollarSign, 
+  Activity,
+  ShoppingCart,
+  BarChart3,
+  FileText,
+  Info,
+  Play,
+  Square,
+  RotateCcw,
+  RefreshCw
+} from 'lucide-react';
 
 interface Product {
-  product_id: string
-  current_quantity: number
-  total_cost: number
-  average_cost: number
+  product_id: string;
+  name: string;
+  description: string;
+  current_quantity: number;
+  total_cost: number | string;
+  average_cost: number | string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Transaction {
-  id: string
-  product_id: string
-  event_type: "purchase" | "sale"
-  quantity: number
-  unit_price?: number
-  total_cost?: number
-  timestamp: string
+  transaction_id: string;
+  product_id: string;
+  event_type: 'purchase' | 'sale';
+  quantity: number;
+  unit_price: number | string | null;
+  total_cost: number | string;
+  timestamp: string;
 }
 
-interface InventoryBatch {
-  id: string
-  product_id: string
-  quantity: number
-  unit_price: number
-  remaining_quantity: number
-  created_at: string
+interface Batch {
+  batch_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number | string;
+  remaining_quantity: number;
+  purchase_date: string;
 }
 
-export default function InventoryDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [products, setProducts] = useState<Product[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [batches, setBatches] = useState<InventoryBatch[]>([])
-  const [isConnected, setIsConnected] = useState(false)
-  const [simulatorRunning, setSimulatorRunning] = useState(false)
+export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isSimulatorRunning, setIsSimulatorRunning] = useState(false);
+  const [isSyncRunning, setIsSyncRunning] = useState(false);
+  const [syncInterval, setSyncInterval] = useState<NodeJS.Timeout | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
 
-  // Mock authentication
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (username === "admin" && password === "inventory123") {
-      setIsAuthenticated(true)
-    } else {
-      alert("Invalid credentials. Use admin/inventory123")
-    }
-  }
-
-  // Initialize mock data
+  // Mock data for demonstration
   useEffect(() => {
-    if (isAuthenticated) {
-      initializeMockData()
-      setIsConnected(true)
-    }
-  }, [isAuthenticated])
-
-  const initializeMockData = () => {
-    const mockProducts: Product[] = [
-      { product_id: "PRD001", current_quantity: 150, total_cost: 12500, average_cost: 83.33 },
-      { product_id: "PRD002", current_quantity: 75, total_cost: 9000, average_cost: 120.0 },
-      { product_id: "PRD003", current_quantity: 200, total_cost: 8000, average_cost: 40.0 },
-    ]
-
-    const mockTransactions: Transaction[] = [
+    setProducts([
       {
-        id: "1",
         product_id: "PRD001",
-        event_type: "purchase",
-        quantity: 100,
-        unit_price: 80,
-        total_cost: 8000,
-        timestamp: "2025-01-26T10:00:00Z",
+        name: "Laptop Dell XPS 13",
+        description: "High-performance laptop with Intel i7 processor",
+        current_quantity: 40,
+        total_cost: 48000.00,
+        average_cost: 1200.00,
+        created_at: "2025-01-15T10:00:00Z",
+        updated_at: "2025-01-20T14:30:00Z"
       },
       {
-        id: "2",
-        product_id: "PRD001",
-        event_type: "purchase",
-        quantity: 100,
-        unit_price: 90,
-        total_cost: 9000,
-        timestamp: "2025-01-26T11:00:00Z",
+        product_id: "PRD002",
+        name: "iPhone 15 Pro",
+        description: "Latest iPhone with A17 Pro chip",
+        current_quantity: 85,
+        total_cost: 80750.00,
+        average_cost: 950.00,
+        created_at: "2025-01-10T09:00:00Z",
+        updated_at: "2025-01-18T16:45:00Z"
       },
       {
-        id: "3",
+        product_id: "PRD003",
+        name: "Samsung 4K TV 55\"",
+        description: "Smart TV with HDR support",
+        current_quantity: 20,
+        total_cost: 15000.00,
+        average_cost: 750.00,
+        created_at: "2025-01-05T11:00:00Z",
+        updated_at: "2025-01-15T13:20:00Z"
+      }
+    ]);
+
+    setTransactions([
+      {
+        transaction_id: "T001",
         product_id: "PRD001",
-        event_type: "sale",
+        event_type: "purchase",
         quantity: 50,
-        total_cost: 4000,
-        timestamp: "2025-01-26T12:00:00Z",
+        unit_price: 1200.00,
+        total_cost: 60000.00,
+        timestamp: "2025-01-15T10:00:00Z"
       },
       {
-        id: "4",
+        transaction_id: "T002",
+        product_id: "PRD001",
+        event_type: "sale",
+        quantity: 10,
+        unit_price: null,
+        total_cost: 12999.90,
+        timestamp: "2025-01-20T14:30:00Z"
+      },
+      {
+        transaction_id: "T003",
         product_id: "PRD002",
         event_type: "purchase",
         quantity: 100,
-        unit_price: 120,
-        total_cost: 12000,
-        timestamp: "2025-01-26T13:00:00Z",
+        unit_price: 950.00,
+        total_cost: 95000.00,
+        timestamp: "2025-01-10T09:00:00Z"
       },
       {
-        id: "5",
+        transaction_id: "T004",
         product_id: "PRD002",
         event_type: "sale",
-        quantity: 25,
-        total_cost: 3000,
-        timestamp: "2025-01-26T14:00:00Z",
-      },
-    ]
+        quantity: 15,
+        unit_price: null,
+        total_cost: 14999.85,
+        timestamp: "2025-01-18T16:45:00Z"
+      }
+    ]);
 
-    const mockBatches: InventoryBatch[] = [
+    setBatches([
       {
-        id: "B1",
+        batch_id: "B001",
         product_id: "PRD001",
-        quantity: 100,
-        unit_price: 80,
-        remaining_quantity: 50,
-        created_at: "2025-01-26T10:00:00Z",
+        quantity: 50,
+        unit_price: 1200.00,
+        remaining_quantity: 40,
+        purchase_date: "2025-01-15T10:00:00Z"
       },
       {
-        id: "B2",
-        product_id: "PRD001",
-        quantity: 100,
-        unit_price: 90,
-        remaining_quantity: 100,
-        created_at: "2025-01-26T11:00:00Z",
-      },
-      {
-        id: "B3",
+        batch_id: "B002",
         product_id: "PRD002",
         quantity: 100,
-        unit_price: 120,
-        remaining_quantity: 75,
-        created_at: "2025-01-26T13:00:00Z",
+        unit_price: 950.00,
+        remaining_quantity: 85,
+        purchase_date: "2025-01-10T09:00:00Z"
       },
-    ]
+      {
+        batch_id: "B003",
+        product_id: "PRD003",
+        quantity: 25,
+        unit_price: 750.00,
+        remaining_quantity: 20,
+        purchase_date: "2025-01-05T11:00:00Z"
+      }
+    ]);
+  }, []);
 
-    setProducts(mockProducts)
-    setTransactions(mockTransactions)
-    setBatches(mockBatches)
-  }
-
-  // FIFO Cost Calculation Logic
-  const calculateFIFOCost = (productId: string, saleQuantity: number): number => {
-    const productBatches = batches
-      .filter((b) => b.product_id === productId && b.remaining_quantity > 0)
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-
-    let remainingToSell = saleQuantity
-    let totalCost = 0
-
-    for (const batch of productBatches) {
-      if (remainingToSell <= 0) break
-
-      const quantityFromBatch = Math.min(remainingToSell, batch.remaining_quantity)
-      totalCost += quantityFromBatch * batch.unit_price
-      remainingToSell -= quantityFromBatch
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'admin' && password === 'inventory123') {
+      setIsAuthenticated(true);
     }
+  };
 
-    return totalCost
-  }
+  const generateRandomEvent = (eventType: 'purchase' | 'sale') => {
+    const productIds = ['PRD001', 'PRD002', 'PRD003'];
+    const randomProductId = productIds[Math.floor(Math.random() * productIds.length)];
+    const quantity = Math.floor(Math.random() * 20) + 5; // 5-25 units
+    const unitPrice = eventType === 'purchase' ? Math.floor(Math.random() * 500) + 800 : null; // 800-1300 for purchase
+    const totalCost = eventType === 'purchase' ? quantity * (unitPrice || 0) : Math.floor(Math.random() * 10000) + 5000;
 
-  // Kafka Event Simulator
-  const simulateKafkaEvent = () => {
-    const productIds = ["PRD001", "PRD002", "PRD003"]
-    const eventTypes = ["purchase", "sale"]
-    const randomProductId = productIds[Math.floor(Math.random() * productIds.length)]
-    const randomEventType = eventTypes[Math.floor(Math.random() * eventTypes.length)] as "purchase" | "sale"
-    const randomQuantity = Math.floor(Math.random() * 50) + 10
-    const randomPrice = Math.floor(Math.random() * 100) + 50
-
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
+    return {
+      transaction_id: `T${Date.now()}`,
       product_id: randomProductId,
-      event_type: randomEventType,
-      quantity: randomQuantity,
-      unit_price: randomEventType === "purchase" ? randomPrice : undefined,
-      total_cost:
-        randomEventType === "purchase"
-          ? randomQuantity * randomPrice
-          : calculateFIFOCost(randomProductId, randomQuantity),
-      timestamp: new Date().toISOString(),
-    }
+      event_type: eventType,
+      quantity: quantity,
+      unit_price: unitPrice,
+      total_cost: totalCost,
+      timestamp: new Date().toISOString()
+    };
+  };
 
-    // Update transactions
-    setTransactions((prev) => [newTransaction, ...prev])
+  const simulateKafkaEvent = async (eventType: 'purchase' | 'sale') => {
+    setIsSimulatorRunning(true);
+    
+    // Generate 5 events with 2-second intervals
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const newTransaction = generateRandomEvent(eventType);
+      setTransactions(prev => [newTransaction, ...prev]);
+      
+      // Update product quantities
+      setProducts(prev => prev.map(product => {
+        if (product.product_id === newTransaction.product_id) {
+          const newQuantity = eventType === 'purchase' 
+            ? product.current_quantity + newTransaction.quantity
+            : product.current_quantity - newTransaction.quantity;
+          const newTotalCost = eventType === 'purchase'
+            ? (typeof product.total_cost === 'string' ? parseFloat(product.total_cost) : product.total_cost) + (newTransaction.total_cost as number)
+            : (typeof product.total_cost === 'string' ? parseFloat(product.total_cost) : product.total_cost) - (newTransaction.total_cost as number);
+          
+          return {
+            ...product,
+            current_quantity: Math.max(0, newQuantity),
+            total_cost: Math.max(0, newTotalCost),
+            average_cost: newTotalCost / Math.max(1, newQuantity),
+            updated_at: new Date().toISOString()
+          };
+        }
+        return product;
+      }));
 
-    // Update products and batches based on FIFO logic
-    if (randomEventType === "purchase") {
-      // Add new batch
-      const newBatch: InventoryBatch = {
-        id: `B${Date.now()}`,
-        product_id: randomProductId,
-        quantity: randomQuantity,
-        unit_price: randomPrice,
-        remaining_quantity: randomQuantity,
-        created_at: new Date().toISOString(),
-      }
-      setBatches((prev) => [...prev, newBatch])
-
-      // Update product quantity and cost
-      setProducts((prev) =>
-        prev.map((p) => {
-          if (p.product_id === randomProductId) {
-            const newQuantity = p.current_quantity + randomQuantity
-            const newTotalCost = p.total_cost + randomQuantity * randomPrice
+      // Update batches for purchase events
+      if (eventType === 'purchase') {
+        const newBatch = {
+          batch_id: `B${Date.now()}`,
+          product_id: newTransaction.product_id,
+          quantity: newTransaction.quantity,
+          unit_price: newTransaction.unit_price || 0,
+          remaining_quantity: newTransaction.quantity,
+          purchase_date: new Date().toISOString()
+        };
+        setBatches(prev => [newBatch, ...prev]);
+      } else {
+        // Update existing batch for sale events
+        setBatches(prev => prev.map(batch => {
+          if (batch.product_id === newTransaction.product_id && batch.remaining_quantity > 0) {
+            const soldFromThisBatch = Math.min(newTransaction.quantity, batch.remaining_quantity);
             return {
-              ...p,
-              current_quantity: newQuantity,
-              total_cost: newTotalCost,
-              average_cost: newTotalCost / newQuantity,
-            }
+              ...batch,
+              remaining_quantity: Math.max(0, batch.remaining_quantity - soldFromThisBatch)
+            };
           }
-          return p
-        }),
-      )
-    } else {
-      // Handle sale with FIFO
-      const product = products.find((p) => p.product_id === randomProductId)
-      if (product && product.current_quantity >= randomQuantity) {
-        // Update batches (consume oldest first)
-        let remainingToSell = randomQuantity
-        setBatches((prev) =>
-          prev.map((batch) => {
-            if (batch.product_id === randomProductId && remainingToSell > 0 && batch.remaining_quantity > 0) {
-              const consumed = Math.min(remainingToSell, batch.remaining_quantity)
-              remainingToSell -= consumed
-              return {
-                ...batch,
-                remaining_quantity: batch.remaining_quantity - consumed,
-              }
-            }
-            return batch
-          }),
-        )
-
-        // Update product
-        setProducts((prev) =>
-          prev.map((p) => {
-            if (p.product_id === randomProductId) {
-              const newQuantity = p.current_quantity - randomQuantity
-              const costOfSale = calculateFIFOCost(randomProductId, randomQuantity)
-              const newTotalCost = p.total_cost - costOfSale
-              return {
-                ...p,
-                current_quantity: newQuantity,
-                total_cost: newTotalCost,
-                average_cost: newQuantity > 0 ? newTotalCost / newQuantity : 0,
-              }
-            }
-            return p
-          }),
-        )
+          return batch;
+        }));
       }
     }
-  }
 
-  // Auto simulator
-  const startSimulator = () => {
-    setSimulatorRunning(true)
-    const interval = setInterval(() => {
-      simulateKafkaEvent()
-    }, 2000)
+    setIsSimulatorRunning(false);
+  };
 
-    setTimeout(() => {
-      clearInterval(interval)
-      setSimulatorRunning(false)
-    }, 20000) // Run for 20 seconds
-  }
+  const toggleSync = () => {
+    if (isSyncRunning) {
+      // Stop sync
+      if (syncInterval) {
+        clearInterval(syncInterval);
+        setSyncInterval(null);
+      }
+      setIsSyncRunning(false);
+    } else {
+      // Start sync
+      setIsSyncRunning(true);
+      const interval = setInterval(() => {
+        // Generate 5 purchase events
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            const newTransaction = generateRandomEvent('purchase');
+            setTransactions(prev => [newTransaction, ...prev]);
+            
+            setProducts(prev => prev.map(product => {
+              if (product.product_id === newTransaction.product_id) {
+                const newQuantity = product.current_quantity + newTransaction.quantity;
+                const newTotalCost = (typeof product.total_cost === 'string' ? parseFloat(product.total_cost) : product.total_cost) + (newTransaction.total_cost as number);
+                
+                return {
+                  ...product,
+                  current_quantity: newQuantity,
+                  total_cost: newTotalCost,
+                  average_cost: newTotalCost / newQuantity,
+                  updated_at: new Date().toISOString()
+                };
+              }
+              return product;
+            }));
+
+            const newBatch = {
+              batch_id: `B${Date.now()}`,
+              product_id: newTransaction.product_id,
+              quantity: newTransaction.quantity,
+              unit_price: newTransaction.unit_price || 0,
+              remaining_quantity: newTransaction.quantity,
+              purchase_date: new Date().toISOString()
+            };
+            setBatches(prev => [newBatch, ...prev]);
+          }, i * 1000); // 1 second apart
+        }
+
+        // Generate 5 sale events after 2.5 seconds
+        setTimeout(() => {
+          for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+              const newTransaction = generateRandomEvent('sale');
+              setTransactions(prev => [newTransaction, ...prev]);
+              
+              setProducts(prev => prev.map(product => {
+                if (product.product_id === newTransaction.product_id) {
+                  const newQuantity = Math.max(0, product.current_quantity - newTransaction.quantity);
+                  const newTotalCost = Math.max(0, (typeof product.total_cost === 'string' ? parseFloat(product.total_cost) : product.total_cost) - (newTransaction.total_cost as number));
+                  
+                  return {
+                    ...product,
+                    current_quantity: newQuantity,
+                    total_cost: newTotalCost,
+                    average_cost: newQuantity > 0 ? newTotalCost / newQuantity : 0,
+                    updated_at: new Date().toISOString()
+                  };
+                }
+                return product;
+              }));
+
+              setBatches(prev => prev.map(batch => {
+                if (batch.product_id === newTransaction.product_id && batch.remaining_quantity > 0) {
+                  const soldFromThisBatch = Math.min(newTransaction.quantity, batch.remaining_quantity);
+                  return {
+                    ...batch,
+                    remaining_quantity: Math.max(0, batch.remaining_quantity - soldFromThisBatch)
+                  };
+                }
+                return batch;
+              }));
+            }, i * 1000); // 1 second apart
+          }
+        }, 2500);
+      }, 5000); // 5-second interval
+      
+      setSyncInterval(interval);
+    }
+  };
+
+  const tabs = [
+    { id: 'overview', label: 'Stock Overview', icon: BarChart3 },
+    { id: 'transactions', label: 'Transaction Ledger', icon: FileText },
+    { id: 'batches', label: 'Inventory Batches', icon: Package },
+    { id: 'fifo', label: 'FIFO Logic', icon: Info }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Product ID</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Current Quantity</th>
+                  <th>Total Cost</th>
+                  <th>Average Cost</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.product_id}>
+                    <td className="font-semibold text-slate-700">{product.product_id}</td>
+                    <td>{product.name}</td>
+                    <td>{product.description}</td>
+                    <td>
+                      <span className="px-3 py-1 rounded-full text-sm bg-emerald-100 text-emerald-700">
+                        {product.current_quantity}
+                      </span>
+                    </td>
+                    <td>${typeof product.total_cost === 'string' ? parseFloat(product.total_cost).toFixed(2) : product.total_cost.toFixed(2)}</td>
+                    <td>${typeof product.average_cost === 'string' ? parseFloat(product.average_cost).toFixed(2) : product.average_cost.toFixed(2)}</td>
+                    <td>{new Date(product.updated_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+      case 'transactions':
+        return (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Product ID</th>
+                  <th>Event Type</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Total Cost</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction) => (
+                  <tr key={transaction.transaction_id}>
+                    <td className="font-semibold text-slate-700">{transaction.transaction_id}</td>
+                    <td>{transaction.product_id}</td>
+                    <td>
+                      <span className={`px-3 py-1 rounded-full text-sm ${
+                        transaction.event_type === 'purchase' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {transaction.event_type}
+                      </span>
+                    </td>
+                    <td>{transaction.quantity}</td>
+                    <td>
+                      {transaction.unit_price 
+                        ? `$${typeof transaction.unit_price === 'string' ? parseFloat(transaction.unit_price).toFixed(2) : transaction.unit_price.toFixed(2)}`
+                        : '-'
+                      }
+                    </td>
+                    <td>${typeof transaction.total_cost === 'string' ? parseFloat(transaction.total_cost).toFixed(2) : transaction.total_cost.toFixed(2)}</td>
+                    <td>{new Date(transaction.timestamp).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+      case 'batches':
+        return (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Batch ID</th>
+                  <th>Product ID</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Remaining Quantity</th>
+                  <th>Purchase Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map((batch) => (
+                  <tr key={batch.batch_id}>
+                    <td className="font-semibold text-slate-700">{batch.batch_id}</td>
+                    <td>{batch.product_id}</td>
+                    <td>{batch.quantity}</td>
+                    <td>${typeof batch.unit_price === 'string' ? parseFloat(batch.unit_price).toFixed(2) : batch.unit_price.toFixed(2)}</td>
+                    <td>
+                      <span className="px-3 py-1 rounded-full text-sm bg-amber-100 text-amber-700">
+                        {batch.remaining_quantity}
+                      </span>
+                    </td>
+                    <td>{new Date(batch.purchase_date).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+      case 'fifo':
+        return (
+          <div className="fifo-explanation">
+            <h3 className="fifo-title">FIFO (First In, First Out) Costing Method</h3>
+            <div className="fifo-content">
+              <p>
+                FIFO is an inventory valuation method that assumes the first items purchased are the first ones sold. 
+                This method is particularly useful for businesses that sell perishable goods or items with expiration dates.
+              </p>
+              
+              <ul className="fifo-list">
+                <li>When a purchase is made, a new inventory batch is created with the purchase price and quantity</li>
+                <li>When a sale occurs, the oldest batches are consumed first</li>
+                <li>The cost of goods sold is calculated based on the oldest inventory prices</li>
+                <li>This method provides more accurate profit margins and inventory valuation</li>
+              </ul>
+
+              <div className="fifo-example">
+                <h4 className="fifo-example-title">Example Scenario:</h4>
+                <ul className="fifo-example-list">
+                  <li>Purchase 50 laptops at $1,200 each (Batch 1)</li>
+                  <li>Purchase 30 laptops at $1,300 each (Batch 2)</li>
+                  <li>Sale of 20 laptops - Cost calculated from Batch 1: $1,200 × 20 = $24,000</li>
+                  <li>Sale of 40 laptops - Cost calculated from Batch 1 (remaining 30) + Batch 2 (10): $1,200 × 30 + $1,300 × 10 = $49,000</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Inventory Management System</CardTitle>
-            <CardDescription className="text-center">Please login to access the dashboard</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="inventory123"
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Login
-              </Button>
-            </form>
-            <div className="mt-4 text-sm text-gray-600 text-center">
-              <p>Demo Credentials:</p>
-              <p>
-                Username: <code>admin</code>
-              </p>
-              <p>
-                Password: <code>inventory123</code>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="login-container">
+        <form className="form" onSubmit={handleLogin}>
+          <h2 className="form-title">Inventory Management</h2>
+          <p className="form-subtitle">Sign in to access your dashboard</p>
+          
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Enter username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button type="submit" className="btn btn-primary">
+            Sign In
+          </button>
+          
+          <div className="demo-credentials">
+            <p><strong>Demo Credentials:</strong> admin / inventory123</p>
+          </div>
+        </form>
       </div>
-    )
+    );
   }
 
+  const totalProducts = products.length;
+  const totalValue = products.reduce((sum, product) => {
+    const cost = typeof product.total_cost === 'string' ? parseFloat(product.total_cost) : product.total_cost;
+    return sum + cost;
+  }, 0);
+  const totalQuantity = products.reduce((sum, product) => sum + product.current_quantity, 0);
+  const averageCost = totalValue / totalQuantity || 0;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Inventory Management System</h1>
-            <p className="text-gray-600">FIFO Costing with Real-time Kafka Integration</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></div>
-              <span className="text-sm text-gray-600">{isConnected ? "Connected" : "Disconnected"}</span>
+    <div className="dashboard-container">
+      <div className="container">
+        <div className="header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div>
+              <h1 className="title">Inventory Management System</h1>
+              <p className="subtitle">Real-time FIFO costing with Kafka integration</p>
             </div>
-            <Button onClick={() => setIsAuthenticated(false)} variant="outline">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setIsAuthenticated(false)}
+              style={{ padding: '8px 16px', fontSize: '14px' }}
+            >
               Logout
-            </Button>
+            </button>
           </div>
         </div>
 
-        {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{products.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${products.reduce((sum, p) => sum + p.total_cost, 0).toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{transactions.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Batches</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{batches.filter((b) => b.remaining_quantity > 0).length}</div>
-            </CardContent>
-          </Card>
+        <div className="status-row">
+          <div className="status-indicator connected"></div>
+          <span className="status-text">System Connected</span>
         </div>
 
-        {/* Kafka Simulator */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Kafka Event Simulator</CardTitle>
-            <CardDescription>Simulate real-time inventory events (purchases and sales)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex space-x-4">
-              <Button onClick={simulateKafkaEvent} disabled={simulatorRunning}>
-                Send Single Event
-              </Button>
-              <Button onClick={startSimulator} disabled={simulatorRunning}>
-                {simulatorRunning ? "Running Auto Simulator..." : "Start Auto Simulator (20s)"}
-              </Button>
-            </div>
-            {simulatorRunning && (
-              <Alert>
-                <Activity className="h-4 w-4" />
-                <AlertDescription>
-                  Auto simulator is running. New events will be generated every 2 seconds for 20 seconds.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        <div className="cards">
+          <div className="card">
+            <div className="card-title">Total Products</div>
+            <div className="card-value">{totalProducts}</div>
+            <div className="card-desc">Active inventory items</div>
+          </div>
+          
+          <div className="card">
+            <div className="card-title">Total Value</div>
+            <div className="card-value">${totalValue.toFixed(2)}</div>
+            <div className="card-desc">Current inventory worth</div>
+          </div>
+          
+          <div className="card">
+            <div className="card-title">Total Quantity</div>
+            <div className="card-value">{totalQuantity}</div>
+            <div className="card-desc">Units in stock</div>
+          </div>
+          
+          <div className="card">
+            <div className="card-title">Average Cost</div>
+            <div className="card-value">${averageCost.toFixed(2)}</div>
+            <div className="card-desc">Per unit average</div>
+          </div>
+        </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Stock Overview</TabsTrigger>
-            <TabsTrigger value="transactions">Transaction Ledger</TabsTrigger>
-            <TabsTrigger value="batches">Inventory Batches</TabsTrigger>
-            <TabsTrigger value="fifo">FIFO Logic</TabsTrigger>
-          </TabsList>
+        <div className="simulator">
+          <h3 className="simulator-title">Kafka Event Simulator</h3>
+          <p className="simulator-desc">
+            Simulate real-time inventory events to test the FIFO system
+          </p>
+          
+          <div className="simulator-btns">
+            <button 
+              className="btn btn-primary"
+              onClick={() => simulateKafkaEvent('purchase')}
+              disabled={isSimulatorRunning || isSyncRunning}
+            >
+              {isSimulatorRunning ? (
+                <>
+                  <div className="loading-spinner"></div>
+                  Generating 5 Purchases...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart size={18} />
+                  Simulate Purchase (5 events)
+                </>
+              )}
+            </button>
+            
+            <button 
+              className="btn btn-accent"
+              onClick={() => simulateKafkaEvent('sale')}
+              disabled={isSimulatorRunning || isSyncRunning}
+            >
+              {isSimulatorRunning ? (
+                <>
+                  <div className="loading-spinner"></div>
+                  Generating 5 Sales...
+                </>
+              ) : (
+                <>
+                  <TrendingUp size={18} />
+                  Simulate Sale (5 events)
+                </>
+              )}
+            </button>
 
-          <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Product Stock Overview</CardTitle>
-                <CardDescription>Current inventory levels with FIFO-based costing</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product ID</TableHead>
-                      <TableHead>Current Quantity</TableHead>
-                      <TableHead>Total Inventory Cost</TableHead>
-                      <TableHead>Average Cost per Unit</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => (
-                      <TableRow key={product.product_id}>
-                        <TableCell className="font-medium">{product.product_id}</TableCell>
-                        <TableCell>{product.current_quantity}</TableCell>
-                        <TableCell>${product.total_cost.toFixed(2)}</TableCell>
-                        <TableCell>${product.average_cost.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge variant={product.current_quantity > 50 ? "default" : "destructive"}>
-                            {product.current_quantity > 50 ? "In Stock" : "Low Stock"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <button 
+              className={`btn ${isSyncRunning ? 'btn-secondary' : 'btn-accent'}`}
+              onClick={toggleSync}
+              disabled={isSimulatorRunning}
+            >
+              {isSyncRunning ? (
+                <>
+                  <div className="loading-spinner"></div>
+                  Stop Sync
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={18} />
+                  Start Sync
+                </>
+              )}
+            </button>
+          </div>
+        </div>
 
-          <TabsContent value="transactions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Transaction Ledger</CardTitle>
-                <CardDescription>Complete history of purchases and sales with FIFO cost calculations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Product ID</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Price</TableHead>
-                      <TableHead>Total Cost</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
-                        <TableCell className="font-medium">{transaction.product_id}</TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.event_type === "purchase" ? "default" : "secondary"}>
-                            {transaction.event_type === "purchase" ? (
-                              <>
-                                <TrendingUp className="w-3 h-3 mr-1" /> Purchase
-                              </>
-                            ) : (
-                              <>
-                                <TrendingDown className="w-3 h-3 mr-1" /> Sale
-                              </>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{transaction.quantity}</TableCell>
-                        <TableCell>
-                          {transaction.unit_price ? `$${transaction.unit_price.toFixed(2)}` : "FIFO Calculated"}
-                        </TableCell>
-                        <TableCell>${transaction.total_cost?.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="batches">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory Batches</CardTitle>
-                <CardDescription>Current inventory batches ordered by purchase date (FIFO order)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Batch ID</TableHead>
-                      <TableHead>Product ID</TableHead>
-                      <TableHead>Original Quantity</TableHead>
-                      <TableHead>Remaining Quantity</TableHead>
-                      <TableHead>Unit Price</TableHead>
-                      <TableHead>Purchase Date</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {batches
-                      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                      .map((batch) => (
-                        <TableRow key={batch.id}>
-                          <TableCell className="font-medium">{batch.id}</TableCell>
-                          <TableCell>{batch.product_id}</TableCell>
-                          <TableCell>{batch.quantity}</TableCell>
-                          <TableCell>{batch.remaining_quantity}</TableCell>
-                          <TableCell>${batch.unit_price.toFixed(2)}</TableCell>
-                          <TableCell>{new Date(batch.created_at).toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge variant={batch.remaining_quantity > 0 ? "default" : "secondary"}>
-                              {batch.remaining_quantity > 0 ? "Active" : "Consumed"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="fifo">
-            <Card>
-              <CardHeader>
-                <CardTitle>FIFO Logic Explanation</CardTitle>
-                <CardDescription>Understanding First-In-First-Out inventory costing method</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="prose max-w-none">
-                  <h3 className="text-lg font-semibold">How FIFO Works:</h3>
-                  <ol className="list-decimal list-inside space-y-2">
-                    <li>
-                      <strong>Purchase Events:</strong> Create new inventory batches with quantity, unit price, and
-                      timestamp
-                    </li>
-                    <li>
-                      <strong>Sale Events:</strong> Consume inventory from the oldest batches first (First-In-First-Out)
-                    </li>
-                    <li>
-                      <strong>Cost Calculation:</strong> Sale cost is calculated by consuming quantities from oldest
-                      batches at their original purchase prices
-                    </li>
-                    <li>
-                      <strong>Remaining Inventory:</strong> Always valued at the most recent purchase prices
-                    </li>
-                  </ol>
-
-                  <Separator className="my-4" />
-
-                  <h3 className="text-lg font-semibold">Example FIFO Calculation:</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p>
-                      <strong>Purchases:</strong>
-                    </p>
-                    <ul className="list-disc list-inside ml-4">
-                      <li>Jan 1: 100 units @ $80 each</li>
-                      <li>Jan 2: 100 units @ $90 each</li>
-                    </ul>
-                    <p className="mt-2">
-                      <strong>Sale:</strong> 150 units
-                    </p>
-                    <p className="mt-2">
-                      <strong>FIFO Cost Calculation:</strong>
-                    </p>
-                    <ul className="list-disc list-inside ml-4">
-                      <li>First 100 units from Jan 1 batch: 100 × $80 = $8,000</li>
-                      <li>Next 50 units from Jan 2 batch: 50 × $90 = $4,500</li>
-                      <li>
-                        <strong>Total Sale Cost: $12,500</strong>
-                      </li>
-                    </ul>
-                    <p className="mt-2">
-                      <strong>Remaining Inventory:</strong> 50 units @ $90 = $4,500
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <div className="tabs">
+          <div className="tabs-list">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  className={`tabs-trigger ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <Icon size={18} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="tab-panel">
+            {renderTabContent()}
+          </div>
+        </div>
       </div>
     </div>
-  )
+  );
 }

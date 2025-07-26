@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node server.js",
+    "start": "next start",
     "lint": "next lint --fix",
     "kafka:producer": "node scripts/kafka-producer.js",
     "kafka:consumer": "node scripts/kafka-consumer.js",
