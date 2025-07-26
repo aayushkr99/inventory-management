@@ -14,7 +14,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
-      - ./scripts:/docker-entrypoint-initdb.d
+      - ./scripts/init-database.sql:/docker-entrypoint-initdb.d/01-init-database.sql
     networks:
       - inventory-network-dev
     healthcheck:
