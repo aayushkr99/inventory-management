@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --fix",
     "kafka:producer": "node scripts/kafka-producer.js",
     "kafka:consumer": "node scripts/kafka-consumer.js",
     "db:create": "psql -U postgres -f scripts/create-database.sql",

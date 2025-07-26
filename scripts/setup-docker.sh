@@ -29,7 +29,7 @@ DATABASE_URL=postgresql://postgres:postgres123@localhost:5432/inventory_manageme
 KAFKA_BROKER_URL=localhost:9092
 
 # NextAuth Configuration
-NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+NEXTAUTH_SECRET=5644c212a72a209d0bff18a20834c55461dca6c06266ab9273e1dc8e7b2c871a
 NEXTAUTH_URL=http://localhost:3000
 
 # Application Configuration

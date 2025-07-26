@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
         product_id,
         event_type,
         quantity,
+        unit_price: 0, // For sales, unit_price is calculated via FIFO
         total_cost: totalCost,
         timestamp: timestamp || new Date().toISOString(),
       })
