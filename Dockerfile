@@ -15,6 +15,9 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
+# Install Next.js globally for the start command
+RUN npm install -g next
+
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
@@ -53,4 +56,5 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
+# Use the standalone server
 CMD ["node", "server.js"]
