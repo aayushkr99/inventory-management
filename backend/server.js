@@ -3,6 +3,9 @@ const cors = require('cors');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Import Kafka consumer
+const { runConsumer } = require('./kafka-consumer');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -13,7 +16,7 @@ app.use(express.json());
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: false // Disable SSL for local Docker environment
 });
 
 // Health check endpoint
@@ -58,7 +61,7 @@ app.get('/api/batches', async (req, res) => {
   }
 });
 
-// Process inventory event (purchase or sale)
+// Process inventory event (purchase or sale) - This is now handled by Kafka consumer
 app.post('/api/inventory', async (req, res) => {
   const { product_id, event_type, quantity, unit_price, timestamp } = req.body;
   
@@ -79,13 +82,26 @@ app.post('/api/inventory', async (req, res) => {
 
       res.json({ success: true, message: 'Purchase processed successfully' });
     } else if (event_type === 'sale') {
+      // Create sale record first
+      const saleId = `S${Date.now()}`;
+      await pool.query(
+        'INSERT INTO sales (sale_id, product_id, quantity, total_cost, sale_date) VALUES ($1, $2, $3, $4, $5)',
+        [saleId, product_id, quantity, 0, timestamp || new Date().toISOString()]
+      );
+
       // Use FIFO logic to process sale
       const result = await pool.query(
         'SELECT process_sale_fifo($1, $2, $3) as total_cost',
-        [product_id, quantity, `S${Date.now()}`]
+        [product_id, quantity, saleId]
       );
 
       const totalCost = result.rows[0].total_cost;
+
+      // Update sale with actual total cost
+      await pool.query(
+        'UPDATE sales SET total_cost = $1 WHERE sale_id = $2',
+        [totalCost, saleId]
+      );
 
       // Add transaction
       await pool.query(
@@ -123,7 +139,21 @@ app.get('/api/inventory', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
-}); 
+// Start server and Kafka consumer
+const startServer = async () => {
+  try {
+    // Start the Express server
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend server running on port ${PORT}`);
+    });
+
+    // Start the Kafka consumer
+    await runConsumer();
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer(); 

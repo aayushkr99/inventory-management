@@ -14,7 +14,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts:/docker-entrypoint-initdb.d
+      - ./scripts/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
+      - ./scripts/seed-data.sql:/docker-entrypoint-initdb.d/seed-data.sql
     networks:
       - inventory-network
     healthcheck:
@@ -117,20 +118,20 @@ services:
       - inventory-network
 
   # Kafka UI (Optional - for monitoring)
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: inventory-kafka-ui
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    ports:
-      - "8080:8080"
-    networks:
-      - inventory-network
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: inventory-kafka-ui
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+  #     KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - inventory-network
 
 volumes:
   postgres_data:

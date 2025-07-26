@@ -1,6 +1,29 @@
 // API Service for communicating with backend
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
+// Helper function to convert string numbers to actual numbers
+const convertNumericStrings = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') {
+    // Check if it's a numeric string (including decimals)
+    const num = parseFloat(obj);
+    if (!isNaN(num)) return num;
+    return obj;
+  }
+  if (typeof obj === 'object') {
+    if (Array.isArray(obj)) {
+      return obj.map(convertNumericStrings);
+    } else {
+      const converted: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        converted[key] = convertNumericStrings(value);
+      }
+      return converted;
+    }
+  }
+  return obj;
+};
+
 export interface Product {
   product_id: string;
   current_quantity: number;
@@ -42,7 +65,11 @@ export const api = {
       if (!response.ok) {
         throw new Error('Failed to fetch inventory state');
       }
-      return await response.json();
+      const data = await response.json();
+      console.log('Raw API response:', data);
+      const converted = convertNumericStrings(data);
+      console.log('Converted data:', converted);
+      return converted;
     } catch (error) {
       console.error('Error fetching inventory state:', error);
       // Return empty state if backend is not available
@@ -71,7 +98,8 @@ export const api = {
         throw new Error('Failed to process inventory event');
       }
 
-      return await response.json();
+      const data = await response.json();
+      return convertNumericStrings(data);
     } catch (error) {
       console.error('Error processing inventory event:', error);
       throw error;
@@ -85,7 +113,8 @@ export const api = {
       if (!response.ok) {
         throw new Error('Failed to fetch products');
       }
-      return await response.json();
+      const data = await response.json();
+      return convertNumericStrings(data);
     } catch (error) {
       console.error('Error fetching products:', error);
       return [];
@@ -99,7 +128,8 @@ export const api = {
       if (!response.ok) {
         throw new Error('Failed to fetch transactions');
       }
-      return await response.json();
+      const data = await response.json();
+      return convertNumericStrings(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       return [];
@@ -113,7 +143,8 @@ export const api = {
       if (!response.ok) {
         throw new Error('Failed to fetch batches');
       }
-      return await response.json();
+      const data = await response.json();
+      return convertNumericStrings(data);
     } catch (error) {
       console.error('Error fetching batches:', error);
       return [];
